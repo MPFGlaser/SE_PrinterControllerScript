@@ -18,7 +18,7 @@ using VRageMath;
 namespace IngameScript
 {
     partial class Program : MyGridProgram
-    { 
+    {
         // =======================================================================================
         //                                 --- CONFIGURATION ---
         // ======================================================================================= 
@@ -47,6 +47,9 @@ namespace IngameScript
         //                             --- END OF CONFIGURATION ---
         // ======================================================================================= 
 
+
+        string command;
+
         public Program()
         {
             // The constructor, called only once every session and
@@ -59,7 +62,20 @@ namespace IngameScript
             // It's recommended to set RuntimeInfo.UpdateFrequency 
             // here, which will allow your script to run itself without a 
             // timer block.
+
+            // Makes the script run every 10 in-game ticks
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
+
+            // Creates lists for the block groups
+            List<IMyTerminalBlock> welderList = new List<IMyTerminalBlock>();
+            List<IMyTerminalBlock> pistonList = new List<IMyTerminalBlock>();
+            IMyBlockGroup welderGroup = GridTerminalSystem.GetBlockGroupWithName(welderGroupName);
+            IMyBlockGroup pistonGroup = GridTerminalSystem.GetBlockGroupWithName(pistonGroupName);
+            welderGroup.GetBlocks(welderList);
+            pistonGroup.GetBlocks(pistonList);
+
         }
+
 
         public void Save()
         {
@@ -73,16 +89,77 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            if(argument == "welders")
+
+
+
+            if (welderGroup == null)
             {
-                Echo(welderGroupName);
-            }
-            else
-            {
-                Echo("Fill in an argument you numpty.");
+                Echo("No welder group found!");
+                return;
             }
 
-            
+            if (pistonGroup == null)
+            {
+                Echo("No piston group found!");
+                return;
+            }
+
+
+            if (argument == "welders")
+            {
+                Welders(1);
+            }
+            if (argument == "weldersOff")
+            {
+                Welders(0);
+            }
+            if (argument == "extend")
+            {
+                Pistons(speedExtend);
+            }
+            if (argument == "retract")
+            {
+                Pistons(speedRetract);
+            }
+
+            //else if(UpdateType.Terminal != 0)
+            //{
+            //    Echo("Fill in an argument you numpty.");
+            //}
         }
+
+        // Function to turn the welders on or off
+        public void Welders(int state)
+        {
+            Echo(welderGroupName);
+            if (state == 1)
+            {
+                Echo("Welders On");
+                for (int i = 0; i < welderList.Count; i++)
+                {
+                    welderList[i].ApplyAction("OnOff_On");
+                }
+            }
+            else if (state == 0)
+            {
+                Echo("Welders Off");
+                for (int i = 0; i < welderList.Count; i++)
+                {
+                    welderList[i].ApplyAction("OnOff_Off");
+                }
+            }
+        }
+
+        // Function to set the piston's velocity
+        public void Pistons(double velocity)
+        {
+            Echo(pistonGroupName);
+            Echo("Piston speed is now " + velocity);
+            for (int i = 0; i < pistonList.Count; i++)
+            {
+                pistonList[i].SetValue("Velocity", (double)velocity);
+            }
+        }
+
     }
 }
