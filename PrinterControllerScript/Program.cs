@@ -29,13 +29,17 @@ namespace IngameScript
         // Name of the group with the printer's welders.
         string welderGroupName = "3D Welders";
 
-        // Speed at which the pistons should retract during printing. Should always be negative. Remember to leave the 'f' at the end of the number!
+        // Speed at which the pistons should retract during printing. 
+        //Should /always/ be negative. 
+        //Please remember to leave the 'f' at the end of the number!
         float speedPrinting = -0.0075f;
 
-        // Speed at which the pistons should retract when it's not printing. Should always be negative.
+        // Speed at which the pistons should retract when it's not printing. 
+        //Should /always/ be negative.
         float speedRetract = -1;
 
-        // Speed at which the pistons should extend to prepare for printing. Should always be positive.
+        // Speed at which the pistons should extend to prepare for printing. 
+        //Should /always/ be positive.
         float speedExtend = 1;
 
         // Warning lights.
@@ -47,16 +51,21 @@ namespace IngameScript
         //                             --- END OF CONFIGURATION ---
         // ======================================================================================= 
 
-        // List Declaration
+        // Declaration of non-user editable variables
         List<IMyTerminalBlock> pistonList = new List<IMyTerminalBlock>();
         List<IMyTerminalBlock> welderList = new List<IMyTerminalBlock>();
         List<IMyTerminalBlock> warningLightList = new List<IMyTerminalBlock>();
+        string ERROR_TEXT = "";
+        string helpOwnership = "\nPlease check the ownership settings of your blocks!\n";
+        bool isValid = true;
 
         public Program()
         {
             // Makes the script run every 10 in-game ticks
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            VariableSanityCheck();
             ParseGroups();
+            ErrorHandler(1);
         }
 
         public void Save()
@@ -70,112 +79,119 @@ namespace IngameScript
             // Should probably do something with this...
         }
 
+        public void VariableSanityCheck()
+        {
+            if (speedPrinting >= -0.000001)
+            {
+                ERROR_TEXT += "Printing speed should be less than 0.";
+            }
+
+            if (speedRetract >= -0.000001)
+            {
+                ERROR_TEXT += "Piston retraction speed should be less than 0.";
+            }
+
+            if (speedExtend <= 0.000001)
+            {
+                ERROR_TEXT += "Piston extension speed should be more than 0.";
+            }
+        }
+
         public void ParseGroups()
         {
-            string ERROR_TEXT = "";
-
-            // Pistons
+            // Checks and sets up Pistons group.
             if (GridTerminalSystem.GetBlockGroupWithName(pistonGroupName) != null)
             {
-                GridTerminalSystem.GetBlockGroupWithName(pistonGroupName).GetBlocksOfType<IMyPistonBase>(pistonList, FilterThis);
+                GridTerminalSystem.GetBlockGroupWithName(pistonGroupName).GetBlocksOfType<IMyPistonBase>(pistonList);
                 if (pistonList.Count == 0)
                 {
                     ERROR_TEXT += "Group \"" + pistonGroupName + "\" has no piston blocks!\n";
+                    isValid = false;
                 }
             }
             else
             {
                 ERROR_TEXT += "Group \"" + pistonGroupName + "\" not found!\n";
+                isValid = false;
             }
 
-            // Welders
+            // Checks and sets up Welders group.
             if (GridTerminalSystem.GetBlockGroupWithName(welderGroupName) != null)
             {
                 GridTerminalSystem.GetBlockGroupWithName(welderGroupName).GetBlocksOfType<IMyShipWelder>(welderList);
                 if (welderList.Count == 0)
                 {
                     ERROR_TEXT += "Group \"" + welderGroupName + "\" has no welder blocks!\n";
+                    isValid = false;
                 }
             }
             else
             {
                 ERROR_TEXT += "Group \"" + welderGroupName + "\" not found!\n";
+                isValid = false;
             }
 
-            // Shows the errors
-            if (ERROR_TEXT != "")
+            // TODO: Warning Lights Group
+            // Warning Lights
+            if (useWarningLights)
             {
-                Echo("Script errors found:\n" + ERROR_TEXT + "Please check the ownership settings of your blocks!");
-                return;
+                //if (GridTerminalSystem.GetBlockGroupWithName(warningLightGroups))
+                //{
+
+                //}
             }
-            else
+
+            // Amends a useful block ownership tip to the error message if it concerns a group issue.
+            if (ERROR_TEXT.Contains("Group"))
             {
-                Echo("");
+                ERROR_TEXT += helpOwnership;
             }
-
-            Echo("Script was compiled at " + DateTime.Now.ToString("HH:mm:ss"));
-            //Echo(pistonList.Count.ToString() + " pistons found");
-            //foreach (var block in pistonList)
-            //{
-            //    Echo($" - {block.CustomName}");
-            //}
-
-            // Welder Group
-            //IMyBlockGroup welderGroup = GridTerminalSystem.GetBlockGroupWithName(welderGroupName);
-            //if (welderGroup == null)
-            //{
-            //    Echo("No welder group found!");
-            //    return;
-            //}
-            //List<IMyTerminalBlock> welderList = new List<IMyTerminalBlock>();
-            //welderGroup.GetBlocks(welderList);
-
-            //foreach (var block in welderList)
-            //{
-            //    Echo($" - {block.CustomName}");
-            //}
-
-
-            // Warning Lights Group
         }
 
-        bool FilterThis(IMyTerminalBlock block)
-        {
-            return block.CubeGrid == Me.CubeGrid;
-        }
-
+        // Main function, processes all incoming run requests and arguments
         public void Main(string argument, UpdateType updateSource)
         {
-
-            if (argument.ToLower() == "welders")
+            if ((updateSource & (UpdateType.Update10)) == 0 && isValid == true)
             {
-                WelderController(1);
-            }
-            if (argument.ToLower() == "weldersoff")
-            {
-                WelderController(0);
-            }
-
-            if (argument.ToLower() == "extend")
-            {
-                PistonController(speedExtend);
-            }
-            if (argument.ToLower() == "retract")
-            {
-                PistonController(speedRetract);
-            }
-
-            else if ((updateSource & (UpdateType.Update10)) == 0 && argument == "")
-            {
-                Echo("Fill in an argument you numpty.");
+                switch (argument.ToLower())
+                {
+                    case "welders":
+                        WelderController(1);
+                        break;
+                    case "weldersoff":
+                        WelderController(0);
+                        break;
+                    case "extend":
+                        PistonController(speedExtend);
+                        break;
+                    case "retract":
+                        PistonController(speedRetract);
+                        break;
+                    case "print":
+                        PistonController(speedPrinting);
+                        WelderController(1);
+                        break;
+                    case "reset":
+                        PistonController(speedRetract);
+                        WelderController(0);
+                        break;
+                    case "":
+                        ERROR_TEXT += "Please fill in an argument\n";
+                        ErrorHandler(1);
+                        ErrorHandler(0);
+                        break;
+                    default:
+                        ERROR_TEXT += "\"" + argument.ToLower() + "\" is not a valid argument.\n";
+                        ErrorHandler(1);
+                        ErrorHandler(0);
+                        break;
+                }
             }
         }
 
-        // Function to turn the welders on or off
-
+        // Function to turn the welders on or off.
         public void WelderController(int state)
         {
-            Echo(welderGroupName);
             if (state == 1)
             {
                 Echo("Welders On");
@@ -194,15 +210,50 @@ namespace IngameScript
             }
         }
 
-
-        // Function to set the piston's velocity
+        // Function to set the piston's velocity.
         public void PistonController(float velocity)
         {
-            Echo(pistonGroupName);
             Echo("Piston speed is now " + velocity);
             for (int i = 0; i < pistonList.Count; i++)
             {
                 pistonList[i].SetValue("Velocity", (float)velocity);
+            }
+        }
+
+        // Function to turn the warning lights on or off.
+        public void WarningLightController(int state)
+        {
+            if (state == 1)
+            {
+                Echo("Warning Lights On");
+                for (int i = 0; i < warningLightList.Count; i++)
+                {
+                    warningLightList[i].ApplyAction("OnOff_On");
+                }
+            }
+            else
+            {
+                Echo("Warning Lights Off");
+                for (int i = 0; i < warningLightList.Count; i++)
+                {
+                    warningLightList[i].ApplyAction("OnOff_Off");
+                }
+            }
+        }
+
+        // Function to display errors to the user using Echo().
+        public void ErrorHandler(int state)
+        {
+            // Shows the errors
+            if (state == 1 && ERROR_TEXT != "")
+            {
+                Echo("!!!Script errors found!!!\n" + ERROR_TEXT);
+                return;
+            }
+            else
+            {
+                Echo(null);
+                ERROR_TEXT = "";
             }
         }
     }
