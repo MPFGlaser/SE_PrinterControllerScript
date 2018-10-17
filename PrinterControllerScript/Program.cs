@@ -29,14 +29,14 @@ namespace IngameScript
         // Name of the group with the printer's welders.
         string welderGroupName = "3D Welders";
 
-        // Speed at which the pistons should retract during printing. Should always be negative.
-        double speedPrinting = -0.0075;
+        // Speed at which the pistons should retract during printing. Should always be negative. Remember to leave the 'f' at the end of the number!
+        float speedPrinting = -0.0075f;
 
         // Speed at which the pistons should retract when it's not printing. Should always be negative.
-        double speedRetract = -1;
+        float speedRetract = -1;
 
         // Speed at which the pistons should extend to prepare for printing. Should always be positive.
-        double speedExtend = 1;
+        float speedExtend = 1;
 
         // Warning lights.
         // Example: string[] warningLightGroups = { "3D Warning Lights Top Row", "3D Warning Lights Spinning"};
@@ -47,35 +47,17 @@ namespace IngameScript
         //                             --- END OF CONFIGURATION ---
         // ======================================================================================= 
 
-
-        string command;
+        // List Declaration
+        List<IMyTerminalBlock> pistonList = new List<IMyTerminalBlock>();
+        List<IMyTerminalBlock> welderList = new List<IMyTerminalBlock>();
+        List<IMyTerminalBlock> warningLightList = new List<IMyTerminalBlock>();
 
         public Program()
         {
-            // The constructor, called only once every session and
-            // always before any other method is called. Use it to
-            // initialize your script. 
-            //     
-            // The constructor is optional and can be removed if not
-            // needed.
-            // 
-            // It's recommended to set RuntimeInfo.UpdateFrequency 
-            // here, which will allow your script to run itself without a 
-            // timer block.
-
             // Makes the script run every 10 in-game ticks
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
-
-            // Creates lists for the block groups
-            List<IMyTerminalBlock> welderList = new List<IMyTerminalBlock>();
-            List<IMyTerminalBlock> pistonList = new List<IMyTerminalBlock>();
-            IMyBlockGroup welderGroup = GridTerminalSystem.GetBlockGroupWithName(welderGroupName);
-            IMyBlockGroup pistonGroup = GridTerminalSystem.GetBlockGroupWithName(pistonGroupName);
-            welderGroup.GetBlocks(welderList);
-            pistonGroup.GetBlocks(pistonList);
-
+            ParseGroups();
         }
-
 
         public void Save()
         {
@@ -85,51 +67,113 @@ namespace IngameScript
             // 
             // This method is optional and can be removed if not
             // needed.
+            // Should probably do something with this...
+        }
+
+        public void ParseGroups()
+        {
+            string ERROR_TEXT = "";
+
+            // Pistons
+            if (GridTerminalSystem.GetBlockGroupWithName(pistonGroupName) != null)
+            {
+                GridTerminalSystem.GetBlockGroupWithName(pistonGroupName).GetBlocksOfType<IMyPistonBase>(pistonList, FilterThis);
+                if (pistonList.Count == 0)
+                {
+                    ERROR_TEXT += "Group \"" + pistonGroupName + "\" has no piston blocks!\n";
+                }
+            }
+            else
+            {
+                ERROR_TEXT += "Group \"" + pistonGroupName + "\" not found!\n";
+            }
+
+            // Welders
+            if (GridTerminalSystem.GetBlockGroupWithName(welderGroupName) != null)
+            {
+                GridTerminalSystem.GetBlockGroupWithName(welderGroupName).GetBlocksOfType<IMyShipWelder>(welderList);
+                if (welderList.Count == 0)
+                {
+                    ERROR_TEXT += "Group \"" + welderGroupName + "\" has no welder blocks!\n";
+                }
+            }
+            else
+            {
+                ERROR_TEXT += "Group \"" + welderGroupName + "\" not found!\n";
+            }
+
+            // Shows the errors
+            if (ERROR_TEXT != "")
+            {
+                Echo("Script errors found:\n" + ERROR_TEXT + "Please check the ownership settings of your blocks!");
+                return;
+            }
+            else
+            {
+                Echo("");
+            }
+
+            Echo("Script was compiled at " + DateTime.Now.ToString("HH:mm:ss"));
+            //Echo(pistonList.Count.ToString() + " pistons found");
+            //foreach (var block in pistonList)
+            //{
+            //    Echo($" - {block.CustomName}");
+            //}
+
+            // Welder Group
+            //IMyBlockGroup welderGroup = GridTerminalSystem.GetBlockGroupWithName(welderGroupName);
+            //if (welderGroup == null)
+            //{
+            //    Echo("No welder group found!");
+            //    return;
+            //}
+            //List<IMyTerminalBlock> welderList = new List<IMyTerminalBlock>();
+            //welderGroup.GetBlocks(welderList);
+
+            //foreach (var block in welderList)
+            //{
+            //    Echo($" - {block.CustomName}");
+            //}
+
+
+            // Warning Lights Group
+        }
+
+        bool FilterThis(IMyTerminalBlock block)
+        {
+            return block.CubeGrid == Me.CubeGrid;
         }
 
         public void Main(string argument, UpdateType updateSource)
         {
 
-
-
-            if (welderGroup == null)
+            if (argument.ToLower() == "welders")
             {
-                Echo("No welder group found!");
-                return;
+                WelderController(1);
+            }
+            if (argument.ToLower() == "weldersoff")
+            {
+                WelderController(0);
             }
 
-            if (pistonGroup == null)
+            if (argument.ToLower() == "extend")
             {
-                Echo("No piston group found!");
-                return;
+                PistonController(speedExtend);
+            }
+            if (argument.ToLower() == "retract")
+            {
+                PistonController(speedRetract);
             }
 
-
-            if (argument == "welders")
+            else if ((updateSource & (UpdateType.Update10)) == 0 && argument == "")
             {
-                Welders(1);
+                Echo("Fill in an argument you numpty.");
             }
-            if (argument == "weldersOff")
-            {
-                Welders(0);
-            }
-            if (argument == "extend")
-            {
-                Pistons(speedExtend);
-            }
-            if (argument == "retract")
-            {
-                Pistons(speedRetract);
-            }
-
-            //else if(UpdateType.Terminal != 0)
-            //{
-            //    Echo("Fill in an argument you numpty.");
-            //}
         }
 
         // Function to turn the welders on or off
-        public void Welders(int state)
+
+        public void WelderController(int state)
         {
             Echo(welderGroupName);
             if (state == 1)
@@ -140,7 +184,7 @@ namespace IngameScript
                     welderList[i].ApplyAction("OnOff_On");
                 }
             }
-            else if (state == 0)
+            else
             {
                 Echo("Welders Off");
                 for (int i = 0; i < welderList.Count; i++)
@@ -150,16 +194,16 @@ namespace IngameScript
             }
         }
 
+
         // Function to set the piston's velocity
-        public void Pistons(double velocity)
+        public void PistonController(float velocity)
         {
             Echo(pistonGroupName);
             Echo("Piston speed is now " + velocity);
             for (int i = 0; i < pistonList.Count; i++)
             {
-                pistonList[i].SetValue("Velocity", (double)velocity);
+                pistonList[i].SetValue("Velocity", (float)velocity);
             }
         }
-
     }
 }
