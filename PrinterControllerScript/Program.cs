@@ -45,7 +45,7 @@ namespace IngameScript
         // Warning lights.
         // Example: string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning"};
         bool useWarningLights = true;
-        string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning" };
+        string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning", "3D Warning Lights Spinning 2", "3D Warning Lights Spinning 3" };
 
         // =======================================================================================
         //                             --- END OF CONFIGURATION ---
@@ -62,7 +62,7 @@ namespace IngameScript
         public Program()
         {
             // Makes the script run every 10 in-game ticks
-            Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            Runtime.UpdateFrequency = UpdateFrequency.Update100;
             VariableSanityCheck();
             ParseGroups();
             ErrorHandler(1);
@@ -131,7 +131,6 @@ namespace IngameScript
                 isValid = false;
             }
 
-            // TODO: Warning Lights Group
             // Warning Lights
             if (useWarningLights)
             {
@@ -139,12 +138,8 @@ namespace IngameScript
                 {
                     if (GridTerminalSystem.GetBlockGroupWithName(word) != null)
                     {
-                        // TODO: Make it append the new items to the list instead of making a new list for the second, third, etc. group, overwriting the old.
-                        //GridTerminalSystem.GetBlockGroupWithName(word).GetBlocks(warningLightList);
-
                         List<IMyTerminalBlock> warningLightStorage = new List<IMyTerminalBlock>();
                         GridTerminalSystem.GetBlockGroupWithName(word).GetBlocks(warningLightStorage);
-                        //warningLightList<IMyTerminalBlock>.Add(warningLightStorage);
                         foreach (var block in warningLightStorage)
                         {
                             warningLightList.Add(block);
@@ -161,10 +156,6 @@ namespace IngameScript
                         isValid = false;
                     }
                 }
-                //if (GridTerminalSystem.GetBlockGroupWithName(warningLightGroups))
-                //{
-
-                //}
             }
 
             // Amends a useful block ownership tip to the error message if it concerns a group issue.
@@ -177,7 +168,7 @@ namespace IngameScript
         // Main function, processes all incoming run requests and arguments
         public void Main(string argument, UpdateType updateSource)
         {
-            if ((updateSource & (UpdateType.Update10)) == 0 && isValid == true)
+            if ((updateSource & (UpdateType.Update100)) == 0 && isValid == true)
             {
                 switch (argument.ToLower())
                 {
@@ -197,12 +188,6 @@ namespace IngameScript
                         PistonController(speedPrinting);
                         WelderController(1);
                         break;
-                    case "lights":
-                        WarningLightController(1);
-                        break;
-                    case "lightsoff":
-                        WarningLightController(0);
-                        break;
                     case "reset":
                         PistonController(speedRetract);
                         WelderController(0);
@@ -218,6 +203,11 @@ namespace IngameScript
                         ErrorHandler(0);
                         break;
                 }
+            }
+
+            if ((updateSource & (UpdateType.Update100)) != 0)
+            {
+                WarningLightController();
             }
         }
 
@@ -252,24 +242,64 @@ namespace IngameScript
             }
         }
 
-        // Function to turn the warning lights on or off.
-        public void WarningLightController(int state)
+        // Function to turn the warning lights on or off depending on piston postion and welder status.
+        public void WarningLightController()
         {
-            foreach (var block in warningLightList)
+            // Variable initialisation for counting system
+            bool weldersOff;
+            int inactiveWelderCount = 0;
+            bool pistonsHome;
+            int pistonHomeCount = 0;
+
+            // Counting of inactive welders
+            for (int i = 0; i < welderList.Count; i++)
             {
-                Echo($" - {block.CustomName}");
+                if (!((IMyShipWelder)welderList[i]).Enabled)
+                {
+                    inactiveWelderCount++;
+                }
             }
-            if (state == 1)
+
+            // Counting of pistons that are "home" (near 0.0m extension)
+            for (int i = 0; i < pistonList.Count; i++)
             {
-                Echo("Warning Lights On");
+                if (((IMyPistonBase)pistonList[i]).CurrentPosition < 0.1)
+                {
+                    pistonHomeCount++;
+                }
+            }
+
+            // If the amount of inactive (off) welders is equal to the total amount of welders, all welders are off.
+            if (inactiveWelderCount == welderList.Count)
+            {
+                weldersOff = true;
+            }
+            else
+            {
+                weldersOff = false;
+            }
+
+            // If the amount of pistons in the "home" position is equal to the amount of pistons, all pistons are home.
+            if (pistonHomeCount == pistonList.Count)
+            {
+                pistonsHome = true;
+            }
+            else
+            {
+                pistonsHome = false;
+            }
+
+            // if the welders aren't off (thus, on) OR if the pistons aren't home (extended beyond 0.1m), turn on all lights in the warning light groups declared in the config.
+            if (!weldersOff || !pistonsHome)
+            {
                 for (int i = 0; i < warningLightList.Count; i++)
                 {
                     warningLightList[i].ApplyAction("OnOff_On");
                 }
             }
+            // When both all pistons are home and all welders are off, turn off all warning lights.
             else
             {
-                Echo("Warning Lights Off");
                 for (int i = 0; i < warningLightList.Count; i++)
                 {
                     warningLightList[i].ApplyAction("OnOff_Off");
