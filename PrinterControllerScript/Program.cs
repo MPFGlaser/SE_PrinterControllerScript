@@ -43,9 +43,9 @@ namespace IngameScript
         float speedExtend = 1;
 
         // Warning lights.
-        // Example: string[] warningLightGroups = { "3D Warning Lights Top Row", "3D Warning Lights Spinning"};
-        bool useWarningLights = false;
-        string[] warningLightGroups = { };
+        // Example: string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning"};
+        bool useWarningLights = true;
+        string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning" };
 
         // =======================================================================================
         //                             --- END OF CONFIGURATION ---
@@ -135,6 +135,32 @@ namespace IngameScript
             // Warning Lights
             if (useWarningLights)
             {
+                foreach (var word in warningLightGroups)
+                {
+                    if (GridTerminalSystem.GetBlockGroupWithName(word) != null)
+                    {
+                        // TODO: Make it append the new items to the list instead of making a new list for the second, third, etc. group, overwriting the old.
+                        //GridTerminalSystem.GetBlockGroupWithName(word).GetBlocks(warningLightList);
+
+                        List<IMyTerminalBlock> warningLightStorage = new List<IMyTerminalBlock>();
+                        GridTerminalSystem.GetBlockGroupWithName(word).GetBlocks(warningLightStorage);
+                        //warningLightList<IMyTerminalBlock>.Add(warningLightStorage);
+                        foreach (var block in warningLightStorage)
+                        {
+                            warningLightList.Add(block);
+                        }
+                        if (warningLightList.Count == 0)
+                        {
+                            ERROR_TEXT += "Group \"" + word + "\" has no blocks!\n";
+                            isValid = false;
+                        }
+                    }
+                    else
+                    {
+                        ERROR_TEXT += "Group \"" + word + "\" not found!\n";
+                        isValid = false;
+                    }
+                }
                 //if (GridTerminalSystem.GetBlockGroupWithName(warningLightGroups))
                 //{
 
@@ -170,6 +196,12 @@ namespace IngameScript
                     case "print":
                         PistonController(speedPrinting);
                         WelderController(1);
+                        break;
+                    case "lights":
+                        WarningLightController(1);
+                        break;
+                    case "lightsoff":
+                        WarningLightController(0);
                         break;
                     case "reset":
                         PistonController(speedRetract);
@@ -223,6 +255,10 @@ namespace IngameScript
         // Function to turn the warning lights on or off.
         public void WarningLightController(int state)
         {
+            foreach (var block in warningLightList)
+            {
+                Echo($" - {block.CustomName}");
+            }
             if (state == 1)
             {
                 Echo("Warning Lights On");
@@ -247,7 +283,7 @@ namespace IngameScript
             // Shows the errors
             if (state == 1 && ERROR_TEXT != "")
             {
-                Echo("!!!Script errors found!!!\n" + ERROR_TEXT);
+                Echo("!!!Script errors found!!!\n\n" + ERROR_TEXT);
                 return;
             }
             else
