@@ -24,10 +24,10 @@ namespace IngameScript
         // ======================================================================================= 
 
         // Name of the group with the printer's pistons.
-        string pistonGroupName = "3D Pistons";
+        string pistonGroupName = "Name of the piston group goes here";
 
         // Name of the group with the printer's welders.
-        string welderGroupName = "3D Welders";
+        string welderGroupName = "Name of the welder group goes here";
 
         // Speed at which the pistons should retract during printing. 
         //Should /always/ be negative. 
@@ -43,9 +43,9 @@ namespace IngameScript
         float speedExtend = 1;
 
         // Warning lights.
-        // Example: string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning"};
-        bool useWarningLights = true;
-        string[] warningLightGroups = { "3D Warning Lights (Top Row)" };
+        // Example: string[] warningLightGroups = { "Printer Warning Lights", "Printer Warning Lights 2"};
+        bool useWarningLights = false;
+        string[] warningLightGroups = { };
 
         // === ADVANCED USERS ONLY ===
         // Only touch this if you know what you're doing.
