@@ -45,11 +45,27 @@ namespace IngameScript
         // Warning lights.
         // Example: string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning"};
         bool useWarningLights = true;
-        string[] warningLightGroups = { "3D Warning Lights (Top Row)", "3D Warning Lights Spinning", "3D Warning Lights Spinning 2", "3D Warning Lights Spinning 3" };
+        string[] warningLightGroups = { "3D Warning Lights (Top Row)" };
+
+        // === ADVANCED USERS ONLY ===
+        // Only touch this if you know what you're doing.
+        // setting this to true will disable the checking of user-defined piston speeds. THIS CAN SEVERELY BREAK THINGS.
+        bool disableSanitycheck = false;
 
         // =======================================================================================
         //                             --- END OF CONFIGURATION ---
         // ======================================================================================= 
+
+
+
+
+
+
+        //Touchy touchy means breaky breaky.
+
+
+
+
 
         // Declaration of non-user editable variables
         List<IMyTerminalBlock> pistonList = new List<IMyTerminalBlock>();
@@ -57,13 +73,18 @@ namespace IngameScript
         List<IMyTerminalBlock> warningLightList = new List<IMyTerminalBlock>();
         string ERROR_TEXT = "";
         string helpOwnership = "\nPlease check the ownership settings of your blocks!\n";
+        int pistonExtendedCount;
         bool isValid = true;
+        bool usePistonCheck;
+        bool currentlyPrinting;
 
         public Program()
         {
-            // Makes the script run every 10 in-game ticks
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
-            VariableSanityCheck();
+            if (!disableSanitycheck)
+            {
+                VariableSanityCheck();
+            }
             ParseGroups();
             ErrorHandler(1);
         }
@@ -85,12 +106,10 @@ namespace IngameScript
             {
                 ERROR_TEXT += "Printing speed should be less than 0.";
             }
-
             if (speedRetract >= -0.000001)
             {
                 ERROR_TEXT += "Piston retraction speed should be less than 0.";
             }
-
             if (speedExtend <= 0.000001)
             {
                 ERROR_TEXT += "Piston extension speed should be more than 0.";
@@ -172,25 +191,11 @@ namespace IngameScript
             {
                 switch (argument.ToLower())
                 {
-                    case "welders":
-                        WelderController(1);
-                        break;
-                    case "weldersoff":
-                        WelderController(0);
-                        break;
-                    case "extend":
-                        PistonController(speedExtend);
-                        break;
-                    case "retract":
-                        PistonController(speedRetract);
-                        break;
                     case "print":
-                        PistonController(speedPrinting);
-                        WelderController(1);
+                        usePistonCheck = true;
                         break;
                     case "reset":
-                        PistonController(speedRetract);
-                        WelderController(0);
+                        Reset();
                         break;
                     case "":
                         ERROR_TEXT += "Please fill in an argument\n";
@@ -205,10 +210,40 @@ namespace IngameScript
                 }
             }
 
+            // Printing sequence logic
+            if (usePistonCheck && pistonExtendedCount != pistonList.Count && !currentlyPrinting)
+            {
+                PistonExtensionChecker();
+                PistonController(speedExtend);
+            }
+
+            if (usePistonCheck && pistonExtendedCount == pistonList.Count && !currentlyPrinting)
+            {
+                WelderController(1);
+                PistonController(speedPrinting);
+                usePistonCheck = false;
+                currentlyPrinting = true;
+                pistonExtendedCount = 0;
+            }
+
+            if (currentlyPrinting && usePistonCheck)
+            {
+                Reset();
+            }
+
+            // Makes the lights do blinky blinky when sh!t gets real.
             if ((updateSource & (UpdateType.Update100)) != 0)
             {
                 WarningLightController();
             }
+        }
+
+        public void Reset()
+        {
+            PistonController(speedRetract);
+            WelderController(0);
+            usePistonCheck = false;
+            currentlyPrinting = false;
         }
 
         // Function to turn the welders on or off.
@@ -216,7 +251,6 @@ namespace IngameScript
         {
             if (state == 1)
             {
-                Echo("Welders On");
                 for (int i = 0; i < welderList.Count; i++)
                 {
                     welderList[i].ApplyAction("OnOff_On");
@@ -224,7 +258,6 @@ namespace IngameScript
             }
             else
             {
-                Echo("Welders Off");
                 for (int i = 0; i < welderList.Count; i++)
                 {
                     welderList[i].ApplyAction("OnOff_Off");
@@ -235,7 +268,6 @@ namespace IngameScript
         // Function to set the piston's velocity.
         public void PistonController(float velocity)
         {
-            Echo("Piston speed is now " + velocity);
             for (int i = 0; i < pistonList.Count; i++)
             {
                 pistonList[i].SetValue("Velocity", (float)velocity);
@@ -307,10 +339,21 @@ namespace IngameScript
             }
         }
 
+        public void PistonExtensionChecker()
+        {
+            pistonExtendedCount = 0;
+            for (int i = 0; i < pistonList.Count; i++)
+            {
+                if (((IMyPistonBase)pistonList[i]).CurrentPosition == ((IMyPistonBase)pistonList[i]).MaxLimit)
+                {
+                    pistonExtendedCount++;
+                }
+            }
+        }
+
         // Function to display errors to the user using Echo().
         public void ErrorHandler(int state)
         {
-            // Shows the errors
             if (state == 1 && ERROR_TEXT != "")
             {
                 Echo("!!!Script errors found!!!\n\n" + ERROR_TEXT);
