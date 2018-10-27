@@ -311,10 +311,11 @@ namespace IngameScript
                 weldersOff = false;
             }
 
-            // If the amount of pistons in the "home" position is equal to the amount of pistons, all pistons are home.
+            // If the amount of pistons in the "home" position is equal to the amount of pistons, all pistons are home. Also runs reset when pistons are home.
             if (pistonHomeCount == pistonList.Count)
             {
                 pistonsHome = true;
+                Reset();
             }
             else
             {
