@@ -77,6 +77,7 @@ namespace IngameScript
         bool isValid = true;
         bool usePistonCheck;
         bool currentlyPrinting;
+        bool pistonsHome;
 
         public Program()
         {
@@ -231,6 +232,11 @@ namespace IngameScript
                 Reset();
             }
 
+            if (currentlyPrinting && pistonsHome)
+            {
+                Reset();
+            }
+
             // Makes the lights do blinky blinky when sh!t gets real.
             if ((updateSource & (UpdateType.Update100)) != 0)
             {
@@ -280,7 +286,6 @@ namespace IngameScript
             // Variable initialisation for counting system
             bool weldersOff;
             int inactiveWelderCount = 0;
-            bool pistonsHome;
             int pistonHomeCount = 0;
 
             // Counting of inactive welders
@@ -315,7 +320,7 @@ namespace IngameScript
             if (pistonHomeCount == pistonList.Count)
             {
                 pistonsHome = true;
-                Reset();
+                //Reset();
             }
             else
             {
